@@ -1,5 +1,3 @@
-import java.io.File
-
 const val WIN_SCORE = 6
 const val DRAW_SCORE = 3
 const val LOSS_SCORE = 0

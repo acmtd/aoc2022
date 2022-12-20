@@ -1,5 +1,3 @@
-import java.io.File
-
 fun main() {
     fun caloriesForElf(lines: String): Int {
         return lines.split("\n").sumOf { it.toInt() }

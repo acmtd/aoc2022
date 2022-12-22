@@ -1,115 +1,57 @@
 fun main() {
-    fun constructMatrix(input: List<String>): List<List<Int>> {
+    fun makeTreeMatrix(input: List<String>): List<List<Int>> {
         return input.map { it.toList().map { ch -> ch.digitToInt() } }
     }
 
-    fun visibleFromTop(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Boolean {
-        for (i in 0 until treeI) {
-            if (matrix[i][treeJ] >= matrix[treeI][treeJ]) return false
-        }
-
-        return true
+    fun isVisible(trees: List<Int>, height: Int): Boolean {
+        return !trees.any { it >= height }
     }
 
-    fun visibleFromBottom(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Boolean {
-        for (i in treeI + 1 until matrix.size) {
-            if (matrix[i][treeJ] >= matrix[treeI][treeJ]) return false
-        }
-
-        return true
-    }
-
-    fun visibleFromLeft(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Boolean {
-        for (j in 0 until treeJ) {
-            if (matrix[treeI][j] >= matrix[treeI][treeJ]) return false
-        }
-
-        return true
-    }
-
-    fun visibleFromRight(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Boolean {
-        for (j in treeJ + 1 until matrix.size) {
-            if (matrix[treeI][j] >= matrix[treeI][treeJ]) return false
-        }
-
-        return true
-    }
-
-    fun topScore(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Int {
+    fun score(trees: List<Int>, height: Int): Int {
         var counter = 0
-        for (i in treeI - 1 downTo 0) {
+        for (tree in trees) {
             counter++
-            if (matrix[i][treeJ] >= matrix[treeI][treeJ]) break
+            if (tree >= height) break
         }
 
         return counter
     }
 
-    fun bottomScore(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Int {
-        var counter = 0
-        for (i in treeI + 1 until matrix.size) {
-            counter++
-            if (matrix[i][treeJ] >= matrix[treeI][treeJ]) break
-        }
+    fun treeLists(allTrees: List<List<Int>>, x: Int, y: Int) = listOf(
+        allTrees.subList(0, x).asReversed().map { it[y] },
+        allTrees.subList(x + 1, allTrees.size).map { it[y] },
+        allTrees[x].subList(0, y).asReversed(),
+        allTrees[x].subList(y + 1, allTrees.size)
+    )
 
-        return counter
-    }
-
-    fun leftScore(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Int {
-        var counter = 0
-        for (j in treeJ - 1 downTo 0) {
-            counter++
-            if (matrix[treeI][j] >= matrix[treeI][treeJ]) break
-        }
-
-        return counter
-    }
-
-
-    fun rightScore(matrix: List<List<Int>>, treeI: Int, treeJ: Int): Int {
-        var counter = 0
-        for (j in treeJ + 1 until matrix.size) {
-            counter++
-            if (matrix[treeI][j] >= matrix[treeI][treeJ]) break
-        }
-        return counter
-    }
-
-    fun getHighestScenicScore(matrix: List<List<Int>>): Int {
+    fun getHighestScenicScore(allTrees: List<List<Int>>): Int {
         var highScore = 0
 
         // by using 1 and until we don't have to examine the edges (which have a zero score)
-        for (i in 1 until matrix.size) {
-            for (j in 1 until matrix.size) {
-                val score = leftScore(matrix, i, j) * rightScore(matrix, i, j) *
-                        topScore(matrix, i, j) * bottomScore(matrix, i, j)
+        for (x in 1 until allTrees.size) {
+            for (y in 1 until allTrees.size) {
+                val combinedScore = treeLists(allTrees, x, y)
+                    .map { score(it, allTrees[x][y]) }
+                    .reduce { a, b -> a * b }
 
-                if (score > highScore) highScore = score
+                if (combinedScore > highScore) highScore = combinedScore
             }
         }
         return highScore
     }
 
-    fun countVisible(matrix: List<List<Int>>): Int {
-        val maxIndex = matrix.size - 1
+    fun countVisible(allTrees: List<List<Int>>): Int {
+        val maxIndex = allTrees.size - 1
 
         var counter = 0
 
-        for (i in matrix.indices) {
-            for (j in matrix[i].indices) {
+        for (x in allTrees.indices) {
+            for (y in allTrees[x].indices) {
                 // edge trees are always visible
-                if (i == 0 || i == maxIndex || j == 0 || j == maxIndex) {
+                if (x == 0 || x == maxIndex || y == 0 || y == maxIndex) {
                     counter++
                 } else {
-                    if (visibleFromLeft(matrix, i, j)) {
-                        counter++
-                    } else if (visibleFromRight(matrix, i, j)) {
-                        counter++
-                    } else if (visibleFromTop(matrix, i, j)) {
-                        counter++
-                    } else if (visibleFromBottom(matrix, i, j)) {
-                        counter++
-                    }
+                    if (treeLists(allTrees, x, y).map { isVisible(it, allTrees[x][y]) }.any { it }) counter += 1
                 }
             }
         }
@@ -117,15 +59,12 @@ fun main() {
     }
 
     fun part1(input: List<String>): Int {
-        val matrix = constructMatrix(input)
-        return countVisible(matrix)
+        return countVisible(makeTreeMatrix(input))
     }
 
     fun part2(input: List<String>): Int {
-        val matrix = constructMatrix(input)
-        return getHighestScenicScore(matrix)
+        return getHighestScenicScore(makeTreeMatrix(input))
     }
-
 
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day08_test")

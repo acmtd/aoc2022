@@ -1,20 +1,18 @@
-import java.math.BigInteger
-
-data class Item(var worryLevel: BigInteger) {
-    fun operate(op: Operation, test: BigInteger, worryEases: Boolean, modulo: BigInteger): Boolean {
+data class Item(var worryLevel: Long) {
+    fun operate(op: Operation, test: Long, worryEases: Boolean, modulo: Long): Boolean {
         worryLevel = op.applyTo(worryLevel)
 
         if (worryEases) {
-            worryLevel = worryLevel.divide(BigInteger.valueOf(3))
+            worryLevel /= 3
         } else {
             worryLevel %= modulo
         }
-        return (worryLevel.mod(test).equals(BigInteger.ZERO))
+        return (worryLevel.mod(test) == 0.toLong())
     }
 }
 
-data class Operation(val op: String, val amount: BigInteger?) {
-    fun applyTo(worryLevel: BigInteger): BigInteger {
+data class Operation(val op: String, val amount: Long?) {
+    fun applyTo(worryLevel: Long): Long {
         if (op == "*") return worryLevel * amount!!
         if (op == "+") return worryLevel + amount!!
 
@@ -26,7 +24,7 @@ data class Operation(val op: String, val amount: BigInteger?) {
             val (op, amount) = str.split(" ")
 
             if (amount == "old") return Operation("sq", null)
-            return Operation(op, amount.toBigInteger())
+            return Operation(op, amount.toLong())
         }
     }
 }
@@ -34,12 +32,12 @@ data class Operation(val op: String, val amount: BigInteger?) {
 data class Monkey(
     val items: MutableList<Item>,
     var operation: Operation,
-    var divisibleTest: BigInteger,
+    var divisibleTest: Long,
     var throwTo: List<Int>
 ) {
     var inspectedItems: Long = 0
 
-    fun operate(item: Item, worryEases: Boolean, modulo: BigInteger): Boolean {
+    fun operate(item: Item, worryEases: Boolean, modulo: Long): Boolean {
         inspectedItems++
         return item.operate(operation, divisibleTest, worryEases, modulo)
     }
@@ -48,11 +46,11 @@ data class Monkey(
         fun of(lines: List<String>): Monkey {
             val startItems = lines[1].substringAfter(": ")
                 .split(",")
-                .map { Item(it.trim().toBigInteger()) }
+                .map { Item(it.trim().toLong()) }
                 .toMutableList()
 
             val operation = Operation.of(lines[2].substringAfter("old "))
-            val divisibleTest = lines[3].substringAfter("divisible by ").toBigInteger()
+            val divisibleTest = lines[3].substringAfter("divisible by ").toLong()
             val throwTo = setOf(4, 5)
                 .map { lines[it].substringAfter("monkey ").toInt() }
 
@@ -62,7 +60,7 @@ data class Monkey(
 }
 
 fun main() {
-    fun processRound(monkeys: List<Monkey>, worryEases: Boolean, modulo: BigInteger) {
+    fun processRound(monkeys: List<Monkey>, worryEases: Boolean, modulo: Long) {
         monkeys.forEach { monkey ->
             monkey.items.forEach { item ->
                 if (monkey.operate(item, worryEases, modulo)) {

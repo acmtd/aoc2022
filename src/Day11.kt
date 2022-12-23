@@ -1,12 +1,13 @@
 data class Item(var worryLevel: Long) {
-    fun operate(op: Operation, test: Long, worryEases: Boolean, modulo: Long): Boolean {
+    fun operate(op: Operation, test: Long, modulo: Long?): Boolean {
         worryLevel = op.applyTo(worryLevel)
 
-        if (worryEases) {
-            worryLevel /= 3
-        } else {
+        if (modulo != null) {
             worryLevel %= modulo
+        } else {
+            worryLevel /= 3
         }
+
         return (worryLevel.mod(test) == 0.toLong())
     }
 }
@@ -31,15 +32,15 @@ data class Operation(val op: String, val amount: Long?) {
 
 data class Monkey(
     val items: MutableList<Item>,
-    var operation: Operation,
-    var divisibleTest: Long,
-    var throwTo: List<Int>
+    val operation: Operation,
+    val divisibleTest: Long,
+    val throwTo: List<Int>
 ) {
     var inspectedItems: Long = 0
 
-    fun operate(item: Item, worryEases: Boolean, modulo: Long): Boolean {
+    fun operate(item: Item, modulo: Long?): Boolean {
         inspectedItems++
-        return item.operate(operation, divisibleTest, worryEases, modulo)
+        return item.operate(operation, divisibleTest, modulo)
     }
 
     companion object {
@@ -60,10 +61,10 @@ data class Monkey(
 }
 
 fun main() {
-    fun processRound(monkeys: List<Monkey>, worryEases: Boolean, modulo: Long) {
+    fun processRound(monkeys: List<Monkey>, modulo: Long?) {
         monkeys.forEach { monkey ->
             monkey.items.forEach { item ->
-                if (monkey.operate(item, worryEases, modulo)) {
+                if (monkey.operate(item, modulo)) {
                     monkeys[monkey.throwTo[0]].items.add(item)
                 } else {
                     monkeys[monkey.throwTo[1]].items.add(item)
@@ -74,34 +75,26 @@ fun main() {
         }
     }
 
-    fun part1(input: String): Long {
+    fun inspect(input: String, rounds: Int, part1: Boolean): Long {
         val monkeys = input
             .split("\n\n")
             .map { Monkey.of(it.lines()) }
 
-        val modulo = monkeys.map { it.divisibleTest }
-            .reduce { a, b -> a * b }
+        val modulo: Long? = if (part1) null else monkeys.map { it.divisibleTest }.reduce { a, b -> a * b }
 
-        repeat(20) {
-            processRound(monkeys, true, modulo)
+        repeat(rounds) {
+            processRound(monkeys, modulo)
         }
 
         return monkeys.map { it.inspectedItems }.sortedDescending().take(2).reduce { a, b -> a * b }.toLong()
     }
 
+    fun part1(input: String): Long {
+        return inspect(input, 20, true)
+    }
+
     fun part2(input: String): Long {
-        val monkeys = input
-            .split("\n\n")
-            .map { Monkey.of(it.lines()) }
-
-        val modulo = monkeys.map { it.divisibleTest }
-            .reduce { a, b -> a * b }
-
-        repeat(10000) {
-            processRound(monkeys, false, modulo)
-        }
-
-        return monkeys.map { it.inspectedItems }.sortedDescending().take(2).reduce { a, b -> a * b }.toLong()
+        return inspect(input, 10000, false)
     }
 
     // test if implementation meets criteria from the description, like:

@@ -1,14 +1,12 @@
-# aoc2022
+# Advent of Code 2022
 
 Welcome to the Advent of Code[^aoc] Kotlin project created by [acmtd][github] using the [Advent of Code Kotlin Template][template] delivered by JetBrains.
 
 In this repository, acmtd is about to provide solutions for the puzzles using [Kotlin][kotlin] language.
 
-If you're stuck with Kotlin-specific questions or anything related to this template, check out the following resources:
+This is my first year doing Advent of Code, and also my first time learning and using Kotlin. By trade I write Java code (and a whole lot of SQL) in a corporate environment, so this is a nice change of pace.
 
-- [Kotlin docs][docs]
-- [Kotlin Slack][slack]
-- Template [issue tracker][issues]
+Didn't get started until December 18th so I'm trying to catch up as fast as I can and a bunch of my solutions may be particularly rough around the edges as a result, even for a Kotlin newbie. Having a blast learning though, will be looking for ways to use Kotlin in the work environment in 2023!
 
 
 [^aoc]:

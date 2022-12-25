@@ -75,8 +75,6 @@ fun compareStructs(left: ListStruct, right: ListStruct): CompareResult {
     return CompareResult.SAME
 }
 
-val regex = "\\[([A-Za-z0-9,]*)]".toRegex()
-
 fun makeGroup(groups: MutableMap<String, String>, str: String): String {
     val groupName = randomString(4)
     groups[groupName] = str
@@ -84,17 +82,34 @@ fun makeGroup(groups: MutableMap<String, String>, str: String): String {
 }
 
 fun assemble(str: String, groups: MutableMap<String, String>): String {
+    // Some people, when confronted with a problem, think
+    // "I know, I'll use regular expressions."
+    // Now they have two problems. -- jwz
+    val regex = "\\[([A-Za-z0-9,]*)]".toRegex()
+
+    // Regular expression will pick out any fully formed lists,
+    // (those that don't contain any inner lists)
+    // so for example: [1,[2,[3,[4,[5,6,7]]]],8,9]
+    // here it will pull out "[5,6,7]"
     val matchResult = regex.findAll(str)
 
     var newString = str
 
     matchResult.forEach {
+        // here's the dirty hack: each group e.g. [1,2,3]
+        // gets substituted by a random 4 letter string,
+        // with those substitutions stored in a hashmap
         val groupName = makeGroup(groups, it.groupValues[1])
         newString = newString.replace(it.groupValues[0], groupName)
     }
 
+    // if last regex run replaced no text, we're done, return the
+    // final four letter string that represents the entire sequence
     if (str == newString || !newString.contains("[")) return newString
 
+    // by substituting, now we have less actual [...] lists
+    // remaining, so we can call the function recursively to
+    // remove yet more groups, until eventually there are none left
     return assemble(newString, groups)
 }
 

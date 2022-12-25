@@ -11,6 +11,16 @@ fun readInput(name: String) = File("data", "$name.txt")
 fun readText(name: String) = File("data", "$name.txt")
     .readText()
 
+fun randomString(length: Int): String {
+    val allowedChars = ('A'..'Z') + ('a'..'z')
+    return (1..length)
+        .map { allowedChars.random() }
+        .joinToString("")
+}
+
+fun isNumeric(toCheck: String): Boolean {
+    return toCheck.all { char -> char.isDigit() }
+}
 /**
  * Converts string to md5 hash.
  */

@@ -1,5 +1,7 @@
 import kotlin.math.absoluteValue
 
+data class Exclusion(val pos: D15GridPosition, val dist: Int)
+
 data class D15GridPosition(val x: Int, val y: Int) {
     fun distanceFrom(otherPos: D15GridPosition): Int {
         return (x - otherPos.x).absoluteValue + (y - otherPos.y).absoluteValue
@@ -17,20 +19,14 @@ data class D15GridPosition(val x: Int, val y: Int) {
 
 data class D15Grid(
     val grid: MutableMap<D15GridPosition, D15GridContent>,
-    val minX: Int,
-    val maxX: Int,
-    val maxY: Int
+    val exclusionDistances: Set<Exclusion>
 ) {
-    private fun contentAt(p: D15GridPosition): D15GridContent {
-        return this.grid.getOrDefault(p, defaultContentForRow(p.y))
+    fun contentAt(p: D15GridPosition): D15GridContent {
+        return this.grid.getOrDefault(p, D15GridContent.UNKNOWN)
     }
 
-    private fun defaultContentForRow(y: Int): D15GridContent {
-        return D15GridContent.UNKNOWN
-    }
-
-    private fun printGrid() {
-        for (y in grid.keys.minOf { it.y }..grid.keys.maxOf { it.y }) {
+    fun printGrid(startRow: Int, endRow: Int) {
+        for (y in startRow..endRow) {
             print("$y\t")
             for (x in grid.keys.minOf { it.x }..grid.keys.maxOf { it.x }) {
                 print(contentAt(D15GridPosition(x, y)).toSymbol())
@@ -39,15 +35,31 @@ data class D15Grid(
         }
     }
 
-    private fun withinExtents(p: D15GridPosition): Boolean {
-        return p.x in (minX..maxX) && p.y in (0..maxY)
+    fun calculateExclusionsForRow(row: Int): Set<D15GridPosition> {
+        return exclusionDistances.flatMap { exclusionPositions(it, row) }.toSet()
+    }
+
+    private fun exclusionPositions(it: Exclusion, y: Int): List<D15GridPosition> {
+        // can this exclusion affect this row, and if so, on what columns
+        val dy = (it.pos.y - y).absoluteValue
+
+        if (dy > it.dist) {
+            println("Row $y cannot be affected by exclusion zone $it as it is too far away ($dy)")
+        }
+
+        // if the exclusion is on the same row the possible x values are -dist to dist
+        // for every row distant, those exclusions get one row narrower
+        val maxDX = (it.dist - dy)
+
+        return (-maxDX..maxDX).map { dx -> D15GridPosition(it.pos.x + dx, y) }
     }
 
     companion object {
         fun of(input: List<String>): D15Grid {
             val map = mutableMapOf<D15GridPosition, D15GridContent>()
+            val exclusionDistances = mutableSetOf<Exclusion>()
 
-            val grid = D15Grid(map, 0, 1, 2)
+            val grid = D15Grid(map, exclusionDistances)
 
             input.forEach {
                 val sensorPos = D15GridPosition.of(it.substringAfter(" at ").substringBefore(":"))
@@ -60,17 +72,7 @@ data class D15Grid(
 
                 // calculate taxi-cab distance between the two
                 val distance = sensorPos.distanceFrom(beaconPos)
-
-                // start at the sensor and fan out to the beacon distance
-                // this gets unworkable when the distances are very high
-                for (dx in -distance until distance) {
-                    for (dy in -distance until distance) {
-                        val p = D15GridPosition(sensorPos.x + dx, sensorPos.y + dy)
-                        if (p.distanceFrom(sensorPos) <= distance && grid.contentAt(p) == D15GridContent.UNKNOWN) {
-                            map[p] = D15GridContent.NEITHER
-                        }
-                    }
-                }
+                exclusionDistances.add(Exclusion(sensorPos, distance))
             }
 
             return grid
@@ -91,7 +93,13 @@ enum class D15GridContent {
 
 fun main() {
     fun part1(input: List<String>, row: Int): Int {
-        return D15Grid.of(input).grid.filter { it.key.y == row }
+        val grid = D15Grid.of(input)
+
+        grid.calculateExclusionsForRow(row).forEach {
+            if (grid.contentAt(it) == D15GridContent.UNKNOWN) grid.grid[it] = D15GridContent.NEITHER
+        }
+
+        return grid.grid.filter { it.key.y == row }
             .filter { it.value == D15GridContent.NEITHER }
             .count()
     }
@@ -101,5 +109,5 @@ fun main() {
     check(part1(testInput, 10) == 26)
 
     val input = readInput("Day15")
-//    part1(input, 2000000).println()
+    part1(input, 2000000).println() // 5112034
 }

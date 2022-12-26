@@ -44,7 +44,8 @@ data class D15Grid(
         val dy = (it.pos.y - y).absoluteValue
 
         if (dy > it.dist) {
-            println("Row $y cannot be affected by exclusion zone $it as it is too far away ($dy)")
+//            println("Row $y cannot be affected by exclusion zone $it as it is too far away ($dy)")
+            return emptyList()
         }
 
         // if the exclusion is on the same row the possible x values are -dist to dist
@@ -104,10 +105,32 @@ fun main() {
             .count()
     }
 
+    fun part2(input: List<String>, maxCoord: Int): Int {
+        val grid = D15Grid.of(input)
+
+        (0..maxCoord).forEach { y ->
+            grid.calculateExclusionsForRow(y).forEach {
+                if (grid.contentAt(it) == D15GridContent.UNKNOWN) grid.grid[it] = D15GridContent.NEITHER
+            }
+
+            // now check what is still unknown
+            (0..maxCoord).forEach { x ->
+                val p = D15GridPosition(x, y)
+                if (grid.contentAt(p) == D15GridContent.UNKNOWN) {
+                    println("Looks like we found it at " + p)
+                    return (p.x * 4000000) + p.y
+                }
+            }
+        }
+        return 0
+    }
+
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day15_test")
     check(part1(testInput, 10) == 26)
+    check(part2(testInput, 20) == 56000011)
 
     val input = readInput("Day15")
     part1(input, 2000000).println() // 5112034
+//    part2(input, 4000000).println()
 }

@@ -1,6 +1,23 @@
 import kotlin.math.absoluteValue
+import kotlin.math.max
+import kotlin.math.min
 
-data class Exclusion(val pos: D15GridPosition, val dist: Int)
+data class Exclusion(val pos: D15GridPosition, val dist: Int) {
+    private fun minX() = pos.x - dist
+    private fun maxX() = pos.x + dist
+    private fun rangesForDistance(d: Int, minValue: Int, maxValue: Int): Set<D15GridRange> {
+        val xRange = (max(minValue, minX() + d)..(min(maxValue, maxX() - d)))
+
+        return setOf(
+            D15GridRange(xRange, pos.y - d),
+            D15GridRange(xRange, pos.y + d)
+        )
+    }
+
+    fun xRanges(min: Int, max: Int): Set<D15GridRange> {
+        return (0..dist).flatMap { rangesForDistance(it, min, max) }.toSet()
+    }
+}
 
 data class D15GridPosition(val x: Int, val y: Int) {
     fun distanceFrom(otherPos: D15GridPosition): Int {
@@ -17,42 +34,28 @@ data class D15GridPosition(val x: Int, val y: Int) {
     }
 }
 
+data class D15GridRange(val xRange: IntRange, val yPos: Int)
+
 data class D15Grid(
     val grid: MutableMap<D15GridPosition, D15GridContent>,
     val exclusionDistances: Set<Exclusion>
 ) {
-    fun contentAt(p: D15GridPosition): D15GridContent {
-        return this.grid.getOrDefault(p, D15GridContent.UNKNOWN)
+    fun calculateExclusionsForRow(row: Int): Set<D15GridRange> {
+        return exclusionDistances
+            .filter { (it.pos.y - row).absoluteValue <= it.dist }
+            .map { exclusionPositionsForRow(it, row) }
+            .toSet()
     }
 
-    fun printGrid(startRow: Int, endRow: Int) {
-        for (y in startRow..endRow) {
-            print("$y\t")
-            for (x in grid.keys.minOf { it.x }..grid.keys.maxOf { it.x }) {
-                print(contentAt(D15GridPosition(x, y)).toSymbol())
-            }
-            println("")
-        }
-    }
-
-    fun calculateExclusionsForRow(row: Int): Set<D15GridPosition> {
-        return exclusionDistances.flatMap { exclusionPositions(it, row) }.toSet()
-    }
-
-    private fun exclusionPositions(it: Exclusion, y: Int): List<D15GridPosition> {
+    private fun exclusionPositionsForRow(it: Exclusion, y: Int): D15GridRange {
         // can this exclusion affect this row, and if so, on what columns
         val dy = (it.pos.y - y).absoluteValue
-
-        if (dy > it.dist) {
-//            println("Row $y cannot be affected by exclusion zone $it as it is too far away ($dy)")
-            return emptyList()
-        }
 
         // if the exclusion is on the same row the possible x values are -dist to dist
         // for every row distant, those exclusions get one row narrower
         val maxDX = (it.dist - dy)
 
-        return (-maxDX..maxDX).map { dx -> D15GridPosition(it.pos.x + dx, y) }
+        return D15GridRange((it.pos.x - maxDX..it.pos.x + maxDX), y)
     }
 
     companion object {
@@ -82,55 +85,70 @@ data class D15Grid(
 }
 
 enum class D15GridContent {
-    SENSOR, BEACON, NEITHER, UNKNOWN;
-
-    fun toSymbol(): String {
-        if (this == SENSOR) return "S"
-        if (this == BEACON) return "B"
-        if (this == NEITHER) return "#"
-        return "."
-    }
+    SENSOR, BEACON, NEITHER;
 }
 
 fun main() {
-    fun part1(input: List<String>, row: Int): Int {
+    fun part1(input: List<String>, y: Int): Int {
         val grid = D15Grid.of(input)
 
-        grid.calculateExclusionsForRow(row).forEach {
-            if (grid.contentAt(it) == D15GridContent.UNKNOWN) grid.grid[it] = D15GridContent.NEITHER
+        grid.calculateExclusionsForRow(y).forEach { range ->
+            range.xRange
+                .map { D15GridPosition(it, y) }
+                .filter { !grid.grid.keys.contains(it) }
+                .forEach { grid.grid[it] = D15GridContent.NEITHER }
         }
 
-        return grid.grid.filter { it.key.y == row }
+        return grid.grid.filter { it.key.y == y }
             .filter { it.value == D15GridContent.NEITHER }
             .count()
     }
 
-    fun part2(input: List<String>, maxCoord: Int): Int {
-        val grid = D15Grid.of(input)
+    fun firstNonContiguous(entry: Map.Entry<Int, MutableSet<D15GridRange>>, maxCoord: Int): D15GridPosition? {
+        val set = entry.value.sortedBy { it.xRange.first() }.toMutableList()
 
-        (0..maxCoord).forEach { y ->
-            grid.calculateExclusionsForRow(y).forEach {
-                if (grid.contentAt(it) == D15GridContent.UNKNOWN) grid.grid[it] = D15GridContent.NEITHER
-            }
+        var target = 0
+        var yPos = 0
 
-            // now check what is still unknown
-            (0..maxCoord).forEach { x ->
-                val p = D15GridPosition(x, y)
-                if (grid.contentAt(p) == D15GridContent.UNKNOWN) {
-                    println("Looks like we found it at " + p)
-                    return (p.x * 4000000) + p.y
-                }
+        while (set.isNotEmpty()) {
+            val item = set.removeFirst()
+            yPos = item.yPos
+
+            if (item.xRange.first() > target) {
+                return D15GridPosition(target, yPos)
             }
+            target = max(target, item.xRange.last() + 1)
         }
-        return 0
+
+        // at this point there are no more items left - it's theoretically possible though that
+        // there could be open space beyond the last item
+        if (target >= maxCoord) return null
+
+        return D15GridPosition(target, yPos)
     }
 
-    // test if implementation meets criteria from the description, like:
+    fun part2(input: List<String>, maxCoord: Int): Long {
+        val grid = D15Grid.of(input)
+
+        val rangeMap = mutableMapOf<Int, MutableSet<D15GridRange>>()
+
+        grid.exclusionDistances.flatMap {
+            it.xRanges(0, maxCoord).filter { range -> range.yPos in (0..maxCoord) }
+        }.forEach { r ->
+            val set = rangeMap[r.yPos] ?: mutableSetOf()
+            set.add(r)
+            rangeMap[r.yPos] = set
+        }
+
+        val position = rangeMap.entries.firstNotNullOf { firstNonContiguous(it, maxCoord) }
+        return (position.x.toLong() * 4000000.toLong()) + position.y.toLong()
+    }
+
     val testInput = readInput("Day15_test")
     check(part1(testInput, 10) == 26)
-    check(part2(testInput, 20) == 56000011)
+    check(part2(testInput, 20) == 56000011.toLong())
 
     val input = readInput("Day15")
     part1(input, 2000000).println() // 5112034
-//    part2(input, 4000000).println()
+    part2(input, 4000000).println()  // 13172087230812
 }

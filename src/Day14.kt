@@ -36,33 +36,30 @@ data class Grid(
         return GridContent.AIR
     }
 
-    private fun blocked(p: GridPosition): Boolean {
-        return contentAt(p) != GridContent.AIR
-    }
-
     private fun nextPosition(p: GridPosition): GridPosition? {
-        return p.possibleNextPositions().firstOrNull { !blocked(it) }
+        return p.possibleNextPositions().firstOrNull { contentAt(it) == GridContent.AIR }
     }
 
-    fun flowSand(count: Int): Int {
+    private fun cellsWith(c: GridContent) = grid.values.count { it == c }
+
+    private fun flowSand() {
         val origin = GridPosition(500, 0)
-        var p = origin
 
-        while (!blocked(p)) {
-            p = nextPosition(p) ?: break
+        while (true) {
+            var p = origin
 
-            if (!withinExtents(p)) {
-                return count
+            while (contentAt(p) == GridContent.AIR) {
+                p = nextPosition(p) ?: break
+
+                if (!withinExtents(p)) return
             }
+
+            this.grid[p] = GridContent.SAND
+            if (p == origin) return
         }
-
-        this.grid[p] = GridContent.SAND
-        if (p == origin) return (count + 1)
-
-        return flowSand(count + 1)
     }
 
-    fun printGrid() {
+    private fun printGrid() {
         val minX = grid.keys.minOf { it.x }
         val maxX = grid.keys.maxOf { it.x }
 
@@ -76,6 +73,15 @@ data class Grid(
 
     private fun withinExtents(p: GridPosition): Boolean {
         return p.x in (minX..maxX) && p.y in (0..maxY)
+    }
+
+    fun runSimulation(): Int {
+        flowSand()
+
+        println("Final grid")
+        printGrid()
+
+        return cellsWith(GridContent.SAND)
     }
 
     companion object {
@@ -130,21 +136,11 @@ enum class GridContent {
 
 fun main() {
     fun part1(input: List<String>): Int {
-        val grid = Grid.of(input)
-        val result = grid.flowSand(0)
-
-        println("Final grid")
-        grid.printGrid()
-        return result
+        return Grid.of(input).runSimulation()
     }
 
     fun part2(input: List<String>): Int {
-        val grid = Grid.ofPart2(input)
-        val result = grid.flowSand(0)
-
-        println("Final grid")
-        grid.printGrid()
-        return result
+        return Grid.ofPart2(input).runSimulation()
     }
 
     // test if implementation meets criteria from the description, like:

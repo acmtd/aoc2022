@@ -20,16 +20,14 @@ data class Exclusion(val pos: D15GridPosition, val dist: Int) {
 }
 
 data class D15GridPosition(val x: Int, val y: Int) {
-    fun distanceFrom(otherPos: D15GridPosition): Int {
-        return (x - otherPos.x).absoluteValue + (y - otherPos.y).absoluteValue
-    }
+    fun distanceFrom(otherPos: D15GridPosition) = (x - otherPos.x).absoluteValue + (y - otherPos.y).absoluteValue
 
     companion object {
         fun of(str: String): D15GridPosition {
             val (x, y) = str.split(",")
-                .map { x -> x.replace("[xy= ]".toRegex(), "") }
+                .map { x -> x.replace("[xy= ]".toRegex(), "").toInt() }
 
-            return D15GridPosition(x.toInt(), y.toInt())
+            return D15GridPosition(x, y)
         }
     }
 }
@@ -84,6 +82,25 @@ data class D15Grid(
     }
 }
 
+fun firstNonContiguous(entry: Map.Entry<Int, MutableSet<D15GridRange>>, maxCoord: Int): D15GridPosition? {
+    val set = entry.value.sortedBy { it.xRange.first() }.toMutableList()
+
+    var target = 0
+
+    while (set.isNotEmpty()) {
+        val item = set.removeFirst()
+        if (item.xRange.first() > target) return D15GridPosition(target, item.yPos)
+
+        target = max(target, item.xRange.last() + 1)
+    }
+
+    // at this point there are no more items left - it's theoretically possible though that
+    // there could be open space beyond the last item
+    if (target >= maxCoord) return null
+
+    return D15GridPosition(target, set.first().yPos)
+}
+
 enum class D15GridContent {
     SENSOR, BEACON, NEITHER;
 }
@@ -102,29 +119,6 @@ fun main() {
         return grid.grid.filter { it.key.y == y }
             .filter { it.value == D15GridContent.NEITHER }
             .count()
-    }
-
-    fun firstNonContiguous(entry: Map.Entry<Int, MutableSet<D15GridRange>>, maxCoord: Int): D15GridPosition? {
-        val set = entry.value.sortedBy { it.xRange.first() }.toMutableList()
-
-        var target = 0
-        var yPos = 0
-
-        while (set.isNotEmpty()) {
-            val item = set.removeFirst()
-            yPos = item.yPos
-
-            if (item.xRange.first() > target) {
-                return D15GridPosition(target, yPos)
-            }
-            target = max(target, item.xRange.last() + 1)
-        }
-
-        // at this point there are no more items left - it's theoretically possible though that
-        // there could be open space beyond the last item
-        if (target >= maxCoord) return null
-
-        return D15GridPosition(target, yPos)
     }
 
     fun part2(input: List<String>, maxCoord: Int): Long {

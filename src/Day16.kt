@@ -40,6 +40,8 @@ fun main() {
 
         private fun routeTo(from: Valve, to: Valve, routing: Routing<Valve, Valve?>) =
             shortestPath(routing.first { it.first == from }.second, from, to)
+
+        fun asPosition() = UniquePosition(players.map { it.current }.toSet(), closedValves)
     }
 
     fun parse(input: List<String>): List<Valve> {
@@ -71,16 +73,13 @@ fun main() {
         val allPossibleMoves =
             state.players.map { state.possibleMovesForPlayer(it, routing) }.filter { it.isNotEmpty() }
 
-        if (allPossibleMoves.isEmpty()) return emptyList()
-
-        if (allPossibleMoves.size == 1) {
-            return allPossibleMoves.first().map { listOf(it) }
-        } else if (allPossibleMoves.size == 2) {
-            return allPossibleMoves[0].cartesianProduct(allPossibleMoves[1]) { a, b -> listOf(a, b) }
-                .filter { it[0].target != it[1].target }
+        return if (allPossibleMoves.isEmpty()) {
+            allPossibleMoves
+        } else if (allPossibleMoves.size == 1) {
+            allPossibleMoves.first().map { listOf(it) }
+        } else {
+            allPossibleMoves[0].cartesianProduct(allPossibleMoves[1]) { a, b -> listOf(a, b) }.filter { it[0].target != it[1].target }
         }
-
-        error("Can't handle more than 2 players")
     }
 
     fun runSimulation(minutes: Int, players: Int, input: List<String>): Int {
@@ -107,13 +106,11 @@ fun main() {
             val (state, moves) = queue.removeFirst()
 
             val newState = state.makeMoves(moves, routing)
-
-            val position = UniquePosition(newState.players.map { it.current }.toSet(), newState.closedValves)
-
-            val priorScore = scoreMap.getOrDefault(position, newState.score)
+            val position = newState.asPosition()
+            val priorScore = scoreMap.getOrDefault(position, -1)
 
             // ensure that this is not a less optimal way to reach a state we already know about
-            if (newState.score >= priorScore) {
+            if (newState.score > priorScore) {
                 scoreMap[position] = newState.score
 
                 // check for new high score

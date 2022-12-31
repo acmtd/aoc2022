@@ -96,8 +96,7 @@ fun main() {
 
         // set up initial moves from the start position
         val queue = ArrayDeque<Pair<State, List<Move>>>()
-        val initialMoves = possibleMoves(initialState, routing).map { initialState to it }
-        queue.addAll(initialMoves)
+        queue.addAll(possibleMoves(initialState, routing).map { initialState to it })
 
         var maxScore = 0
         var maxScoreState = initialState
@@ -109,7 +108,7 @@ fun main() {
 
             val newState = state.makeMoves(moves, routing)
 
-            val position = UniquePosition(state.players.map { it.current }.toSet(), newState.closedValves)
+            val position = UniquePosition(newState.players.map { it.current }.toSet(), newState.closedValves)
 
             val priorScore = scoreMap.getOrDefault(position, newState.score)
 
@@ -123,9 +122,7 @@ fun main() {
                     maxScoreState = newState
                 }
 
-                val nextMoves = possibleMoves(newState, routing).map { newState to it }
-
-                queue.addAll(nextMoves.filter { it.second.isNotEmpty() })
+                queue.addAll(possibleMoves(newState, routing).map { newState to it })
             }
         }
 
